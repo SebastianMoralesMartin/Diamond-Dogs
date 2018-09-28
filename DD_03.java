@@ -6,6 +6,7 @@ import robocode.BulletMissedEvent;
 import robocode.HitByBulletEvent;
 import robocode.HitRobotEvent;
 import robocode.HitWallEvent;
+import robocode.RobotDeathEvent;
 import robocode.BulletHitEvent;
 import robocode.AdvancedRobot;
 import java.awt.Color;
@@ -19,9 +20,11 @@ public class DD_03 extends AdvancedRobot {
 	private Estado estado;
 	//private int direccionCanon = 1;
 	private Random rnd = new Random();
-	private double gunTurn;
-	private double radarTurn;
-		
+	private double giroCanon;
+	private double giroRadar;
+	private double giroRobot;
+	private boolean izqODer = true;
+	private boolean unovuno = false;
 		@Override
 		public void run() {
 			
@@ -34,16 +37,19 @@ public class DD_03 extends AdvancedRobot {
 			setScanColor(Color.WHITE);
 			setBulletColor(Color.PINK);
 			estado = Estado.GIRANDO;
+			
+			
 			while(true) {
+				System.out.println(estado);
 				switch(estado) {
 				case GIRANDO:  //algoritmo de movimiento, mueve el cuerpo ligeramente mas rapido que el cañon y el radar
 					setTurnRadarRightRadians(Double.POSITIVE_INFINITY);
 					setTurnGunRightRadians(Double.POSITIVE_INFINITY);
+					setTurnRightRadians(Double.POSITIVE_INFINITY);
 					setAhead(60);
 					setTurnLeft(10);
-					setTurnRadarLeft(10);
-					setTurnGunLeft(10);
 					execute();
+					if (unovuno) {estado = Estado.PVP;}
 					/*estado = Estado.GIROIZQ;
 				
 					if (System.currentTimeMillis()-tiempo>=3000) 
@@ -53,17 +59,17 @@ public class DD_03 extends AdvancedRobot {
 					}*/
 					
 					break;
-				case DISPARANDO:  //caso cuando detecta a un robot enemigo.
+				/*case DISPARANDO:  //caso cuando detecta a un robot enemigo.
 				    //direccionCanon = 0;
 				    //setTurnGunRight(360*direccionCanon);
 				    //setTurnRadarLeftRadians(getRadarTurnRemainingRadians());
-				    setTurnRadarRightRadians(Utils.normalRelativeAngle(radarTurn)); // centra el radar en el enemigo
-				    setTurnGunRightRadians(Utils.normalRelativeAngle(gunTurn));  // centra el cañon en el enemigo
+				    setTurnRadarRightRadians(Utils.normalRelativeAngle(giroRadar)); // centra el radar en el enemigo
+				    setTurnGunRightRadians(Utils.normalRelativeAngle(giroCanon));  // centra el cañon en el enemigo
 					setFire(poder);
-					setAhead(60);
-					setTurnRight(10);
+					setAhead(rnd.nextInt(60));
+					setTurnRight(rnd.nextInt(30));
 					execute();
-					break;
+					break;*/
 				case HUYENDO: //detecta que un proyectil lo impactó y toma acciones evasivas
 					//setTurnGunLeft(10);
 					//setTurnRadarLeft(10);
@@ -73,8 +79,35 @@ public class DD_03 extends AdvancedRobot {
 					execute();
 					break;
 				case PARED: //detecta que colsionó con una pared y da vuelta
-					turnLeft(180);
+					setTurnLeft(180);
+					setBack(100);
+					estado = Estado.GIRANDO;
 					break;
+				case DISDER:
+				    setTurnRadarRightRadians(Utils.normalRelativeAngle(giroRadar)); // centra el radar en el enemigo
+				    setTurnGunRightRadians(Utils.normalRelativeAngle(giroCanon));  // centra el cañon en el enemigo
+					setFire(poder);
+					setAhead(rnd.nextInt(60));
+					setTurnRight(rnd.nextInt(30));
+					execute();
+					break;
+				case DISIZQ:
+				    setTurnRadarRightRadians(Utils.normalRelativeAngle(giroRadar)); // centra el radar en el enemigo
+				    setTurnGunRightRadians(Utils.normalRelativeAngle(giroCanon));  // centra el cañon en el enemigo
+					setFire(poder);
+					setAhead(rnd.nextInt(60)); //decide que velocidad tiene el tanque
+					setTurnLeft(rnd.nextInt(30)); //decide que 
+					execute();
+					break;
+				case PVP:
+					//setTurnRightRadians(POSITIVE_INFINITY);
+					setTurnRadarRightRadians(Utils.normalRelativeAngle(giroRadar)); // centra el radar en el enemigo
+				    setTurnGunRightRadians(Utils.normalRelativeAngle(giroCanon));  // centra el cañon en el enemigo
+				    setTurnRightRadians(Utils.normalRelativeAngle(giroRobot)); // centra el cuerpo del robot en el enemigo para perseguirlo
+				    setAhead(50); // inicia la persecusion
+				    setFire(poder); // 
+				    execute();
+				    break;
 				}
 				
 			}
@@ -82,13 +115,27 @@ public class DD_03 extends AdvancedRobot {
 		}
 		@Override
 		public void onScannedRobot(ScannedRobotEvent event) {
-			this.radarTurn = event.getBearingRadians() + getHeadingRadians() - getRadarHeadingRadians();
-			this.gunTurn = event.getBearingRadians() + getHeadingRadians() - getGunHeadingRadians();
-			estado = Estado.DISPARANDO;
+			this.giroRadar = event.getBearingRadians() + getHeadingRadians() - getRadarHeadingRadians();
+			this.giroCanon = event.getBearingRadians() + getHeadingRadians() - getGunHeadingRadians();
+			this.giroRobot = event.getBearingRadians() + getHeadingRadians() - getHeadingRadians();
+			//el if decide si el robot irá a la izquiera o a la derecha para disparar
+			if(unovuno && izqODer) {
+				estado = Estado.PVP;
+			}else if(unovuno) {
+				estado = Estado.PVP;
+			}else if (izqODer){
+				estado = Estado.DISDER;
+			}else {
+				estado = Estado.DISIZQ;
+			}
 		}
 		@Override
 		public void onBulletMissed(BulletMissedEvent event) {
+			this.izqODer = rnd.nextBoolean();
 			poder = 1;
+			if(unovuno) {
+				estado = Estado.PVP;
+			}else {estado = Estado.GIRANDO;}
 			estado = Estado.GIRANDO;
 		}
 		@Override
@@ -108,20 +155,26 @@ public class DD_03 extends AdvancedRobot {
 		@Override
 		public void onHitWall(HitWallEvent event) {
 			estado = Estado.PARED;
-			estado = Estado.GIRANDO;
 		}
 		@Override
 		public void onHitRobot(HitRobotEvent event) {
 			estado = Estado.PARED;
-			estado = Estado.GIRANDO;
+		}
+		@Override
+		public void onRobotDeath(RobotDeathEvent event) {System.out.println("muerto");
+			if(getOthers() == 1)
+			{
+				this.unovuno = true;
+				estado = Estado.PVP;
+			}
 		}
 		enum Estado{
 			GIRANDO,
-			DISPARANDO,
-			HUYENDO,
-			PVP,
-			EVASION,
-			PARED,
+			HUYENDO, // impactado por proyectil, huye
+			PARED, // colision con pared
+			DISIZQ, //disparo con giros a la izquierda
+			DISDER,//disparo con giros a la derecha
+			PVP //uno contra uno
 		}
 
 }
